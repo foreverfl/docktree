@@ -20,10 +20,26 @@ SQLite 백엔드 데몬에서 직렬화해서 막는 게 핵심.
 
 ## Install
 
+원라인 설치 (macOS / Linux, amd64 / arm64):
+
 ```bash
-git clone <this-repo> ~/code/doctree
+curl -fsSL https://raw.githubusercontent.com/foreverfl/docktree/main/install.sh | sh
+```
+
+- 기본 설치 위치: `$HOME/.local/bin/doctree` — `DOCTREE_INSTALL_DIR` 로 덮어쓸 수 있음
+- 특정 버전: `DOCTREE_VERSION=v0.0.1 curl ... | sh`
+- `~/.local/bin` 이 PATH에 없으면 셸 rc에 추가:
+
+  ```bash
+  export PATH="$HOME/.local/bin:$PATH"
+  ```
+
+소스 빌드:
+
+```bash
+git clone https://github.com/foreverfl/docktree ~/code/doctree
 cd ~/code/doctree
-go build -o ~/.local/bin/doctree .   # PATH 안의 어디든 OK
+go build -o ~/.local/bin/doctree .
 ```
 
 ## zshrc
