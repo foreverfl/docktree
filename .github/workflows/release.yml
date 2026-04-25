@@ -51,7 +51,7 @@ jobs:
         with:
           path: dist
           merge-multiple: true
-      - name: Compute next version
+      - name: Compute next version and changelog
         id: ver
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -59,16 +59,32 @@ jobs:
           last=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // ""')
           if [ -z "$last" ]; then
             ver=v0.0.1
+            range=""
           else
             base=${last#v}
             IFS='.' read -r major minor patch <<< "$base"
             ver="v${major}.${minor}.$((patch+1))"
+            range="${last}..HEAD"
           fi
           echo "ver=$ver" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "notes<<__EOF__"
+            echo "## Changelog"
+            echo
+            git log $range --no-merges --pretty=format:'- %s (%h)'
+            echo
+            if [ -n "$last" ]; then
+              echo
+              echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${last}...${ver}"
+            fi
+            echo "__EOF__"
+          } >> "$GITHUB_OUTPUT"
       - name: Recreate draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VER: ${{ steps.ver.outputs.ver }}
+          NOTES: ${{ steps.ver.outputs.notes }}
           SHA: ${{ github.sha }}
         run: |
           # Drop any leftover drafts so we don't accumulate stale ones.
@@ -79,7 +95,7 @@ jobs:
               done
           gh release create "$VER" \
             --draft \
-            --generate-notes \
+            --notes "$NOTES" \
             --target "$SHA" \
             --title "$VER" \
             dist/*.tar.gz
