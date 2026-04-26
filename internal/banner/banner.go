@@ -2,50 +2,69 @@
 package banner
 
 import (
-	_ "embed"
 	"fmt"
 	"io"
 	"strings"
-)
 
-//go:embed art.txt
-var artText string
+	"github.com/foreverfl/doctree/assets/logo"
+)
 
 const (
 	skyBlue = "\033[38;5;117m"
 	reset   = "\033[0m"
 )
 
-// Print writes the doctree welcome banner to out. version is shown centered
-// below the art; pass an empty string if unknown.
+// Print writes the doctree welcome banner to out: art on top, version label
+// centered below, all wrapped in a sky-blue border. version may be empty.
 func Print(out io.Writer, version string) {
-	art := strings.Split(strings.TrimRight(artText, "\n"), "\n")
-
-	width := 0
-	for _, line := range art {
-		if count := runeCount(line); count > width {
-			width = count
-		}
-	}
-
+	art := artLines()
 	label := "doctree"
 	if version != "" {
 		label = "doctree " + version
 	}
+	width := maxWidth(art...)
 	if count := runeCount(label); count > width {
 		width = count
 	}
 
+	rows := []string{""}
+	rows = append(rows, art...)
+	rows = append(rows, "", centered(label, width), "")
+	drawBox(out, rows, width)
+}
+
+// PrintLogo writes just the boxed art (no version line) to out.
+func PrintLogo(out io.Writer) {
+	art := artLines()
+	width := maxWidth(art...)
+
+	rows := []string{""}
+	rows = append(rows, art...)
+	rows = append(rows, "")
+	drawBox(out, rows, width)
+}
+
+func artLines() []string {
+	return strings.Split(strings.TrimRight(logo.Art, "\n"), "\n")
+}
+
+func drawBox(out io.Writer, rows []string, width int) {
 	dashes := strings.Repeat("─", width+2)
 	fmt.Fprintln(out, skyBlue+"╭"+dashes+"╮"+reset)
-	fmt.Fprintln(out, row("", width))
-	for _, line := range art {
+	for _, line := range rows {
 		fmt.Fprintln(out, row(line, width))
 	}
-	fmt.Fprintln(out, row("", width))
-	fmt.Fprintln(out, row(centered(label, width), width))
-	fmt.Fprintln(out, row("", width))
 	fmt.Fprintln(out, skyBlue+"╰"+dashes+"╯"+reset)
+}
+
+func maxWidth(lines ...string) int {
+	width := 0
+	for _, line := range lines {
+		if count := runeCount(line); count > width {
+			width = count
+		}
+	}
+	return width
 }
 
 // row renders one inner row: sky-blue side borders, single-space inner
