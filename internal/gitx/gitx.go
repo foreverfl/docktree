@@ -25,6 +25,10 @@ func RepoRoot() (string, error) {
 // MainRepoRoot returns the main repository's top-level directory. When called
 // from inside a linked worktree, this differs from RepoRoot, which returns the
 // worktree's own toplevel.
+//
+// Also supports gitt's bare layout (<project>/.bare + <project>/.git pointer):
+// --git-common-dir resolves to <project>/.bare from anywhere inside, and its
+// parent is the project root we want. See gitx_test.go for the locked-in cases.
 func MainRepoRoot() (string, error) {
 	out, err := exec.Command("git", "rev-parse", "--path-format=absolute", "--git-common-dir").Output()
 	if err != nil {
@@ -104,7 +108,7 @@ func WorktreeForBranch(branch string) (string, error) {
 	}
 	target := "refs/heads/" + branch
 	var currentPath string
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		switch {
 		case strings.HasPrefix(line, "worktree "):
 			currentPath = strings.TrimPrefix(line, "worktree ")
