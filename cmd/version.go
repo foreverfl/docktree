@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/foreverfl/doctree/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -10,12 +11,12 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show the installed doctree version",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		v := installedVersion()
-		if v == "" {
+		installed := version.Installed()
+		if installed == "" {
 			fmt.Println("unknown (not installed via install.sh)")
 			return nil
 		}
-		fmt.Println(v)
+		fmt.Println(installed)
 		return nil
 	},
 }

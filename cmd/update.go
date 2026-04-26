@@ -10,6 +10,7 @@ import (
 	"github.com/foreverfl/doctree/internal/process"
 	"github.com/foreverfl/doctree/internal/prompt"
 	"github.com/foreverfl/doctree/internal/release"
+	"github.com/foreverfl/doctree/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +18,7 @@ var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update doctree to the latest release",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		current := installedVersion()
+		current := version.Installed()
 
 		fmt.Println("checking latest release...")
 		latest, err := release.LatestTag()
