@@ -28,6 +28,18 @@ var addCmd = &cobra.Command{
 		}
 		target := worktree.Path(mainRoot, branch)
 
+		existingPath, err := gitx.WorktreeForBranch(branch)
+		if err != nil {
+			return err
+		}
+		if existingPath != "" {
+			fmt.Printf("branch '%s' is already checked out\n  path:   %s\n", branch, existingPath)
+			if err := registerWorktree(mainRoot, branch, existingPath); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: daemon registration failed: %v\n", err)
+			}
+			return nil
+		}
+
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return fmt.Errorf("create worktree parent: %w", err)
 		}

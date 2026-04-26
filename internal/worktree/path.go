@@ -1,5 +1,5 @@
 // Package worktree owns gitt's per-branch worktree layout convention:
-// <repo-parent>/.worktrees/<repo-name>/<safe-branch>.
+// <repo>/.worktrees/<safe-branch>.
 package worktree
 
 import (
@@ -14,12 +14,8 @@ func SafeBranch(branch string) string {
 }
 
 // Path returns the directory where the worktree for branch should live,
-// following gitt's layout: <repo-parent>/.worktrees/<repo-name>/<safe-branch>.
-func Path(repoRoot, branch string) string {
-	return filepath.Join(
-		filepath.Dir(repoRoot),
-		".worktrees",
-		filepath.Base(repoRoot),
-		SafeBranch(branch),
-	)
+// following gitt's layout: <repo>/.worktrees/<safe-branch>. mainRoot must be
+// the main repository's top-level directory (see gitx.MainRepoRoot).
+func Path(mainRoot, branch string) string {
+	return filepath.Join(mainRoot, ".worktrees", SafeBranch(branch))
 }

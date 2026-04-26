@@ -93,6 +93,28 @@ func OngoingOp() (string, error) {
 	return "", nil
 }
 
+// WorktreeForBranch returns the absolute path of the worktree currently
+// holding the given branch, or an empty string if the branch is not checked
+// out anywhere. Useful for giving a friendly message before `git worktree add`
+// would fail with "already used by worktree at ...".
+func WorktreeForBranch(branch string) (string, error) {
+	out, err := exec.Command("git", "worktree", "list", "--porcelain").Output()
+	if err != nil {
+		return "", fmt.Errorf("git worktree list: %w", err)
+	}
+	target := "refs/heads/" + branch
+	var currentPath string
+	for _, line := range strings.Split(string(out), "\n") {
+		switch {
+		case strings.HasPrefix(line, "worktree "):
+			currentPath = strings.TrimPrefix(line, "worktree ")
+		case line == "branch "+target:
+			return currentPath, nil
+		}
+	}
+	return "", nil
+}
+
 // BranchExists reports whether a local branch with the given name exists.
 func BranchExists(branch string) (bool, error) {
 	err := exec.Command("git", "show-ref", "--verify", "--quiet", "refs/heads/"+branch).Run()

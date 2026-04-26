@@ -19,11 +19,11 @@ var removeCmd = &cobra.Command{
 		}
 		branch := args[0]
 
-		repoRoot, err := gitx.RepoRoot()
+		mainRoot, err := gitx.MainRepoRoot()
 		if err != nil {
 			return err
 		}
-		target := worktree.Path(repoRoot, branch)
+		target := worktree.Path(mainRoot, branch)
 
 		if _, err := os.Stat(target); err != nil {
 			if os.IsNotExist(err) {

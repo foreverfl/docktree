@@ -20,7 +20,7 @@ type helpEntry struct {
 var helpCommands = []helpEntry{
 	{usage: "on", description: "Start the daemon (~/.gitt/gitt.sock, ~/.gitt/gitt.db)"},
 	{usage: "off", description: "Stop the daemon"},
-	{usage: "add <branch>", description: "Create a worktree at <repo-parent>/.worktrees/<repo-name>/<branch>", requiresDaemon: true},
+	{usage: "add <branch>", description: "Create a worktree at <repo>/.worktrees/<branch>", requiresDaemon: true},
 	{usage: "remove <branch>", description: "Remove the worktree folder for <branch> (git worktree remove)", requiresDaemon: true},
 	{usage: "status", description: "Show the current worktree's repo, branch, path, and state"},
 	{usage: "sqlite", description: "Run a SQLite self-test against the daemon's database", requiresDaemon: true},
