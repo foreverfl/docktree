@@ -3,6 +3,17 @@ name: release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: write
@@ -55,18 +66,27 @@ jobs:
         id: ver
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUMP: ${{ github.event.inputs.bump || 'patch' }}
         run: |
           last=$(gh release list --exclude-drafts --limit 100 --json tagName --jq '.[].tagName' \
             | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
             | sort -V \
             | tail -1)
           if [ -z "$last" ]; then
-            ver=v0.0.1
+            case "$BUMP" in
+              major) ver=v1.0.0 ;;
+              minor) ver=v0.1.0 ;;
+              *)     ver=v0.0.1 ;;
+            esac
             range=""
           else
             base=${last#v}
             IFS='.' read -r major minor patch <<< "$base"
-            ver="v${major}.${minor}.$((patch+1))"
+            case "$BUMP" in
+              major) ver="v$((major+1)).0.0" ;;
+              minor) ver="v${major}.$((minor+1)).0" ;;
+              *)     ver="v${major}.${minor}.$((patch+1))" ;;
+            esac
             range="${last}..HEAD"
           fi
           echo "ver=$ver" >> "$GITHUB_OUTPUT"
