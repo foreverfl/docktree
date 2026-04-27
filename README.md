@@ -24,7 +24,7 @@ without thinking about worktrees, branches, or compose configuration.
 | `gitt rename <old> <new>` | Rename a branch and its worktree folder together. Updates `<repo>/.worktrees/<old>` → `<repo>/.worktrees/<new>`, renames the branch, and updates the daemon record in one step. **Requires daemon** |
 | `gitt status` | Print the current worktree's repository, branch, path, and state (clean/dirty/rebase/merge/conflict, etc.) |
 | `gitt sqlite` | Run a SQLite self-test against the daemon's database to confirm the DB connection is healthy. **Requires daemon** |
-| `gitt update` | Fetch and install the latest gitt release |
+| `gitt update` | Fetch the latest release and install it. Shuts down the daemon, force-deletes all registered worktree folders (uncommitted and untracked changes are unrecoverable), runs `git worktree prune` on each repo, then removes `~/.gitt/` and replaces the binary. Use `-y`/`--yes` to skip the prompt |
 | `gitt version` | Print the installed gitt version |
 | `gitt logo` | Print the gitt logo art in a sky-blue box |
 | `gitt uninstall` | Stop the daemon → remove `~/.gitt/` → remove the binary. Use `-y`/`--yes` to skip the confirmation prompt |

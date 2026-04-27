@@ -198,6 +198,20 @@ func WorktreeRemove(target string) error {
 	return nil
 }
 
+// WorktreePrune runs `git worktree prune` against the repo at workdir, dropping
+// orphaned admin records under .git/worktrees/<name> for worktrees whose
+// folders were already removed out-of-band. Pass "" to use the current working
+// directory.
+func WorktreePrune(workdir string) error {
+	cmd := exec.Command("git", "worktree", "prune")
+	cmd.Dir = workdir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git worktree prune: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // BranchRename runs `git branch -m <old> <new>` against the repo at workdir.
 // Pass "" to use the current working directory. Daemon callers pass the main
 // repo root so the rename hits the right repo regardless of where the daemon
