@@ -8,8 +8,8 @@ import (
 	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/paths"
 	"github.com/foreverfl/gitt/internal/process"
-	"github.com/foreverfl/gitt/internal/prompt"
 	"github.com/foreverfl/gitt/internal/release"
+	"github.com/foreverfl/gitt/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +29,7 @@ the file in place using a backup/swap flow (gitt.db → gitt.db.old → new file
 → rename) so a failed migration leaves the original data recoverable. Your
 registered worktree folders on disk are also left untouched.
 
-Use -y/--yes to skip the confirmation prompt.`,
+Use -y/--yes to skip the confirmation ui.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		current := paths.InstalledVersion()
 
@@ -78,9 +78,9 @@ Use -y/--yes to skip the confirmation prompt.`,
 
 		yes, _ := cmd.Flags().GetBool("yes")
 		if !yes {
-			ok, err := prompt.Confirm("proceed?", false)
+			ok, err := ui.Confirm("proceed?", false)
 			if err != nil {
-				if errors.Is(err, prompt.ErrNoTTY) {
+				if errors.Is(err, ui.ErrNoTTY) {
 					return fmt.Errorf("non-interactive shell — pass --yes to confirm")
 				}
 				return err

@@ -1,5 +1,4 @@
-// Package prompt provides interactive yes/no confirmation prompts for the CLI.
-package prompt
+package ui
 
 import (
 	"bufio"

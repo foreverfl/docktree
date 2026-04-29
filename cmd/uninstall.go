@@ -7,7 +7,7 @@ import (
 
 	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/paths"
-	"github.com/foreverfl/gitt/internal/prompt"
+	"github.com/foreverfl/gitt/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -40,9 +40,9 @@ var uninstallCmd = &cobra.Command{
 
 		yes, _ := cmd.Flags().GetBool("yes")
 		if !yes {
-			ok, err := prompt.Confirm("proceed?", false)
+			ok, err := ui.Confirm("proceed?", false)
 			if err != nil {
-				if errors.Is(err, prompt.ErrNoTTY) {
+				if errors.Is(err, ui.ErrNoTTY) {
 					return fmt.Errorf("non-interactive shell — pass --yes to confirm")
 				}
 				return err

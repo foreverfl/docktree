@@ -1,5 +1,7 @@
-// Package banner renders the gitt welcome banner shown on `gitt on`.
-package banner
+// Package ui owns the CLI's terminal-facing output and input: the welcome
+// banner shown on `gitt on`, the standalone logo art, and interactive
+// yes/no prompts.
+package ui
 
 import (
 	"fmt"
@@ -14,9 +16,9 @@ const (
 	reset   = "\033[0m"
 )
 
-// Print writes the gitt welcome banner to out: art on top, version label
+// Banner writes the gitt welcome banner to out: art on top, version label
 // centered below, all wrapped in a sky-blue border. version may be empty.
-func Print(out io.Writer, version string) {
+func Banner(out io.Writer, version string) {
 	art := artLines()
 	label := "gitt"
 	if version != "" {
@@ -33,8 +35,8 @@ func Print(out io.Writer, version string) {
 	drawBox(out, rows, width)
 }
 
-// PrintLogo writes just the boxed art (no version line) to out.
-func PrintLogo(out io.Writer) {
+// Logo writes just the boxed art (no version line) to out.
+func Logo(out io.Writer) {
 	art := artLines()
 	width := maxWidth(art...)
 
