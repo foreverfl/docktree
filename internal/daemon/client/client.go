@@ -1,4 +1,7 @@
-package daemon
+// Package client holds the caller-side helpers that talk to the gitt daemon
+// over its unix socket. It is split from internal/daemon (which only carries
+// the wire protocol types) so consumers like cmd/* import only this package.
+package client
 
 import (
 	"encoding/json"
@@ -7,6 +10,8 @@ import (
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/foreverfl/gitt/internal/daemon"
 )
 
 // ErrNotRunning is returned when no daemon socket is reachable at the given path.
@@ -27,7 +32,7 @@ func Ping(sockPath string) error {
 		}
 		return err
 	}
-	resp, err := Call(sockPath, Request{Op: OpPing})
+	resp, err := Call(sockPath, daemon.Request{Op: daemon.OpPing})
 	if err != nil {
 		return err
 	}
@@ -40,25 +45,25 @@ func Ping(sockPath string) error {
 // Call sends a single Request to the daemon and returns its Response.
 // ECONNREFUSED / ENOENT on dial map to ErrNotRunning so callers can give the
 // same "run gitt on first" hint regardless of which failure mode hit.
-func Call(sockPath string, req Request) (Response, error) {
+func Call(sockPath string, req daemon.Request) (daemon.Response, error) {
 	conn, err := net.DialTimeout("unix", sockPath, dialTimeout)
 	if err != nil {
 		if isNotRunning(err) {
-			return Response{}, ErrNotRunning
+			return daemon.Response{}, ErrNotRunning
 		}
-		return Response{}, err
+		return daemon.Response{}, err
 	}
 	defer conn.Close()
 
 	if err := conn.SetDeadline(time.Now().Add(rwTimeout)); err != nil {
-		return Response{}, err
+		return daemon.Response{}, err
 	}
 	if err := json.NewEncoder(conn).Encode(req); err != nil {
-		return Response{}, err
+		return daemon.Response{}, err
 	}
-	var resp Response
+	var resp daemon.Response
 	if err := json.NewDecoder(conn).Decode(&resp); err != nil {
-		return Response{}, err
+		return daemon.Response{}, err
 	}
 	return resp, nil
 }

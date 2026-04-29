@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"text/tabwriter"
 
-	"github.com/foreverfl/gitt/internal/daemon"
+	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +16,7 @@ var listCmd = &cobra.Command{
 		if err := requireDaemon(); err != nil {
 			return err
 		}
-		worktrees, err := daemon.ListWorktrees()
+		worktrees, err := client.ListWorktrees()
 		if err != nil {
 			return err
 		}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/foreverfl/gitt/internal/daemon"
+	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/paths"
 	"github.com/foreverfl/gitt/internal/prompt"
 	"github.com/spf13/cobra"
@@ -53,7 +53,7 @@ var uninstallCmd = &cobra.Command{
 			}
 		}
 
-		if err := daemon.Shutdown(sockpath, pidpath, os.Stdout, os.Stderr); err != nil {
+		if err := client.Shutdown(sockpath, pidpath, os.Stdout, os.Stderr); err != nil {
 			return fmt.Errorf("stop daemon: %w", err)
 		}
 

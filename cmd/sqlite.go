@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/foreverfl/gitt/internal/daemon"
+	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +18,7 @@ var sqliteCmd = &cobra.Command{
 		if err := requireDaemon(); err != nil {
 			return err
 		}
-		message, err := daemon.SqliteTest()
+		message, err := client.SqliteTest()
 		if err != nil {
 			return fmt.Errorf("sqlite test failed: %w", err)
 		}

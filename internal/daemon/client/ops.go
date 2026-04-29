@@ -1,4 +1,4 @@
-package daemon
+package client
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/foreverfl/gitt/internal/daemon"
 	"github.com/foreverfl/gitt/internal/paths"
 	"github.com/foreverfl/gitt/internal/store"
 	"github.com/foreverfl/gitt/internal/worktree"
@@ -18,8 +19,8 @@ func RegisterWorktree(mainRoot, branch, target string) error {
 	if err != nil {
 		return err
 	}
-	response, err := Call(sockpath, Request{
-		Op: OpRegisterWorktree,
+	response, err := Call(sockpath, daemon.Request{
+		Op: daemon.OpRegisterWorktree,
 		Args: map[string]any{
 			"repo_root":        mainRoot,
 			"repo_name":        filepath.Base(mainRoot),
@@ -64,7 +65,7 @@ func ListWorktrees() ([]store.Worktree, error) {
 	if err != nil {
 		return nil, err
 	}
-	response, err := Call(sockpath, Request{Op: OpListWorktrees})
+	response, err := Call(sockpath, daemon.Request{Op: daemon.OpListWorktrees})
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +91,8 @@ func RenameWorktree(mainRoot, oldBranch, newBranch string) error {
 	if err != nil {
 		return err
 	}
-	response, err := Call(sockpath, Request{
-		Op: OpRenameWorktree,
+	response, err := Call(sockpath, daemon.Request{
+		Op: daemon.OpRenameWorktree,
 		Args: map[string]any{
 			"repo_root":  mainRoot,
 			"old_branch": oldBranch,
@@ -115,7 +116,7 @@ func SqliteTest() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	response, err := Call(sockpath, Request{Op: OpSqliteTest})
+	response, err := Call(sockpath, daemon.Request{Op: daemon.OpSqliteTest})
 	if err != nil {
 		return "", err
 	}
@@ -134,8 +135,8 @@ func ReleaseWorktree(mainRoot, branch string) error {
 	if err != nil {
 		return err
 	}
-	response, err := Call(sockpath, Request{
-		Op: OpRelease,
+	response, err := Call(sockpath, daemon.Request{
+		Op: daemon.OpRelease,
 		Args: map[string]any{
 			"repo_root":   mainRoot,
 			"branch_name": branch,

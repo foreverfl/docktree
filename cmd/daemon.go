@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/foreverfl/gitt/internal/daemon"
+	"github.com/foreverfl/gitt/internal/daemon/server"
 	"github.com/foreverfl/gitt/internal/paths"
 	"github.com/spf13/cobra"
 )
@@ -21,7 +21,7 @@ var daemonRunCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return daemon.Run(sockpath, dbpath)
+		return server.Run(sockpath, dbpath)
 	},
 }
 

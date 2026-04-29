@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/foreverfl/gitt/internal/daemon"
+	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/gitx"
 	"github.com/foreverfl/gitt/internal/worktree"
 	"github.com/spf13/cobra"
@@ -33,7 +33,7 @@ var renameCmd = &cobra.Command{
 			return err
 		}
 
-		if err := daemon.RenameWorktree(mainRoot, oldBranch, newBranch); err != nil {
+		if err := client.RenameWorktree(mainRoot, oldBranch, newBranch); err != nil {
 			return fmt.Errorf("rename failed: %w", err)
 		}
 

@@ -3,7 +3,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/foreverfl/gitt/internal/daemon"
+	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/paths"
 	"github.com/spf13/cobra"
 )
@@ -20,7 +20,7 @@ var offCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return daemon.Shutdown(sockpath, pidpath, os.Stdout, os.Stderr)
+		return client.Shutdown(sockpath, pidpath, os.Stdout, os.Stderr)
 	},
 }
 

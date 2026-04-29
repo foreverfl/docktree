@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/foreverfl/gitt/internal/daemon"
+	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/paths"
 	"github.com/spf13/cobra"
 )
@@ -30,8 +30,8 @@ func requireDaemon() error {
 	if err != nil {
 		return err
 	}
-	if err := daemon.Ping(sockpath); err != nil {
-		if errors.Is(err, daemon.ErrNotRunning) {
+	if err := client.Ping(sockpath); err != nil {
+		if errors.Is(err, client.ErrNotRunning) {
 			return fmt.Errorf("gitt daemon is not running. start it first: gitt on")
 		}
 		return err

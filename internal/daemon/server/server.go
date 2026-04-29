@@ -1,4 +1,7 @@
-package daemon
+// Package server is the long-lived daemon process: it listens on the unix
+// socket, dispatches Op-keyed handlers, and owns the SQLite store. It is
+// only ever started by `gitt daemon-run`, which `gitt on` fork-execs into.
+package server
 
 import (
 	"encoding/json"
@@ -10,15 +13,16 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/foreverfl/gitt/internal/daemon"
 	"github.com/foreverfl/gitt/internal/store"
 )
 
-type handler func(req Request) Response
+type handler func(req daemon.Request) daemon.Response
 
 type server struct {
 	listener     net.Listener
 	store        *store.Store
-	handlers     map[Op]handler
+	handlers     map[daemon.Op]handler
 	shutdown     chan struct{}
 	shutdownOnce sync.Once
 	wg           sync.WaitGroup
@@ -42,53 +46,53 @@ func Run(sockPath, dbPath string) error {
 		return fmt.Errorf("listen %s: %w", sockPath, err)
 	}
 
-	server := &server{
+	srv := &server{
 		listener: listener,
 		store:    sqliteStore,
 		shutdown: make(chan struct{}),
 	}
-	server.handlers = map[Op]handler{
-		OpPing: func(_ Request) Response { return Response{OK: true} },
-		OpShutdown: func(_ Request) Response {
+	srv.handlers = map[daemon.Op]handler{
+		daemon.OpPing: func(_ daemon.Request) daemon.Response { return daemon.Response{OK: true} },
+		daemon.OpShutdown: func(_ daemon.Request) daemon.Response {
 			// Close listener first so accept loop exits, then signal Run to
 			// finish. Done in a goroutine so this handler can still return its
 			// response on the same connection before the conn is torn down.
-			go server.shutdownOnce.Do(func() { close(server.shutdown) })
-			return Response{OK: true}
+			go srv.shutdownOnce.Do(func() { close(srv.shutdown) })
+			return daemon.Response{OK: true}
 		},
-		OpSqliteTest: func(_ Request) Response {
-			summary, err := server.store.Test()
+		daemon.OpSqliteTest: func(_ daemon.Request) daemon.Response {
+			summary, err := srv.store.Test()
 			if err != nil {
-				return Response{OK: false, Error: err.Error()}
+				return daemon.Response{OK: false, Error: err.Error()}
 			}
-			return Response{OK: true, Data: map[string]any{"message": summary}}
+			return daemon.Response{OK: true, Data: map[string]any{"message": summary}}
 		},
-		OpRegisterWorktree: server.handleRegisterWorktree,
-		OpListWorktrees:    server.handleListWorktrees,
-		OpRenameWorktree:   server.handleRenameWorktree,
-		OpRelease:          server.handleRelease,
+		daemon.OpRegisterWorktree: srv.handleRegisterWorktree,
+		daemon.OpListWorktrees:    srv.handleListWorktrees,
+		daemon.OpRenameWorktree:   srv.handleRenameWorktree,
+		daemon.OpRelease:          srv.handleRelease,
 	}
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(sigCh)
 
-	go server.acceptLoop()
+	go srv.acceptLoop()
 
 	select {
-	case <-server.shutdown:
+	case <-srv.shutdown:
 	case <-sigCh:
 	}
 
 	_ = listener.Close()
-	server.wg.Wait()
+	srv.wg.Wait()
 	_ = os.Remove(sockPath)
 	return nil
 }
 
-func (server *server) acceptLoop() {
+func (s *server) acceptLoop() {
 	for {
-		conn, err := server.listener.Accept()
+		conn, err := s.listener.Accept()
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
 				return
@@ -96,26 +100,26 @@ func (server *server) acceptLoop() {
 			fmt.Fprintln(os.Stderr, "gitt: accept:", err)
 			continue
 		}
-		server.wg.Add(1)
+		s.wg.Add(1)
 		go func() {
-			defer server.wg.Done()
-			server.handleConn(conn)
+			defer s.wg.Done()
+			s.handleConn(conn)
 		}()
 	}
 }
 
-func (server *server) handleConn(conn net.Conn) {
+func (s *server) handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	var req Request
+	var req daemon.Request
 	if err := json.NewDecoder(conn).Decode(&req); err != nil {
-		_ = json.NewEncoder(conn).Encode(Response{OK: false, Error: "decode: " + err.Error()})
+		_ = json.NewEncoder(conn).Encode(daemon.Response{OK: false, Error: "decode: " + err.Error()})
 		return
 	}
 
-	h, ok := server.handlers[req.Op]
+	h, ok := s.handlers[req.Op]
 	if !ok {
-		_ = json.NewEncoder(conn).Encode(Response{OK: false, Error: "unknown op: " + string(req.Op)})
+		_ = json.NewEncoder(conn).Encode(daemon.Response{OK: false, Error: "unknown op: " + string(req.Op)})
 		return
 	}
 	_ = json.NewEncoder(conn).Encode(h(req))

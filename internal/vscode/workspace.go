@@ -11,8 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/foreverfl/gitt/internal/daemon"
-	"github.com/foreverfl/gitt/internal/paths"
+	"github.com/foreverfl/gitt/internal/daemon/client"
 )
 
 // Folder is one entry under the "folders" key of a .code-workspace file.
@@ -29,38 +28,24 @@ type Folder struct {
 // belong to mainRoot, and returns folder entries with paths relative to
 // mainRoot so the workspace file is portable across machines.
 func Folders(mainRoot string) ([]Folder, error) {
-	sockpath, err := paths.SockPath()
+	worktrees, err := client.ListWorktrees()
 	if err != nil {
-		return nil, err
-	}
-	response, err := daemon.Call(sockpath, daemon.Request{Op: daemon.OpListWorktrees})
-	if err != nil {
-		if errors.Is(err, daemon.ErrNotRunning) {
+		if errors.Is(err, client.ErrNotRunning) {
 			return nil, fmt.Errorf("gitt daemon is not running. start it first: gitt on")
 		}
 		return nil, err
 	}
-	if !response.OK {
-		return nil, fmt.Errorf("list worktrees failed: %s", response.Error)
-	}
 
-	raw, _ := response.Data["worktrees"].([]any)
 	var folders []Folder
-	for _, item := range raw {
-		row, ok := item.(map[string]any)
-		if !ok {
+	for _, w := range worktrees {
+		if w.RepoRoot != mainRoot {
 			continue
 		}
-		if stringField(row, "repo_root") != mainRoot {
-			continue
-		}
-		worktreePath := stringField(row, "worktree_path")
-		branch := stringField(row, "branch_name")
-		path, err := filepath.Rel(mainRoot, worktreePath)
+		path, err := filepath.Rel(mainRoot, w.WorktreePath)
 		if err != nil {
-			path = worktreePath
+			path = w.WorktreePath
 		}
-		folders = append(folders, Folder{Name: branch, Path: path})
+		folders = append(folders, Folder{Name: w.BranchName, Path: path})
 	}
 	sort.Slice(folders, func(i, j int) bool {
 		return folders[i].Name < folders[j].Name
@@ -96,9 +81,4 @@ func WriteWorkspace(workspacePath string, folders []Folder) error {
 		return fmt.Errorf("write workspace file: %w", err)
 	}
 	return nil
-}
-
-func stringField(row map[string]any, key string) string {
-	value, _ := row[key].(string)
-	return value
 }

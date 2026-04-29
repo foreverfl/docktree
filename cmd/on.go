@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/foreverfl/gitt/internal/banner"
-	"github.com/foreverfl/gitt/internal/daemon"
+	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/paths"
 	"github.com/foreverfl/gitt/internal/process"
 	"github.com/spf13/cobra"
@@ -30,7 +30,7 @@ var onCmd = &cobra.Command{
 
 		// Already running? Skip.
 		if pid, ok := process.ReadPid(pidpath); ok && process.Alive(pid) {
-			if err := daemon.Ping(sockpath); err == nil {
+			if err := client.Ping(sockpath); err == nil {
 				fmt.Printf("gitt daemon already running (pid=%d)\n", pid)
 				return nil
 			}
@@ -45,7 +45,7 @@ var onCmd = &cobra.Command{
 			return fmt.Errorf("locate self: %w", err)
 		}
 
-		pid, err := daemon.Spawn(self, sockpath, pidpath, logpath)
+		pid, err := client.Spawn(self, sockpath, pidpath, logpath)
 		if err != nil {
 			return err
 		}

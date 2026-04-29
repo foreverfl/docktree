@@ -1,4 +1,4 @@
-package daemon
+package client
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/foreverfl/gitt/internal/daemon"
 	"github.com/foreverfl/gitt/internal/process"
 )
 
@@ -26,7 +27,7 @@ func Shutdown(sockpath, pidpath string, out, errw io.Writer) error {
 		return nil
 	}
 
-	_, callErr := Call(sockpath, Request{Op: OpShutdown})
+	_, callErr := Call(sockpath, daemon.Request{Op: daemon.OpShutdown})
 
 	if process.WaitExit(pid, stopTimeout) {
 		_ = os.Remove(sockpath)

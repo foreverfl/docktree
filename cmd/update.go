@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/foreverfl/gitt/internal/daemon"
+	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/paths"
 	"github.com/foreverfl/gitt/internal/process"
 	"github.com/foreverfl/gitt/internal/prompt"
@@ -64,7 +64,7 @@ Use -y/--yes to skip the confirmation prompt.`,
 
 		daemonRunning := false
 		if pid, ok := process.ReadPid(pidpath); ok && process.Alive(pid) {
-			if err := daemon.Ping(sockpath); err == nil {
+			if err := client.Ping(sockpath); err == nil {
 				daemonRunning = true
 			}
 		}
@@ -104,7 +104,7 @@ Use -y/--yes to skip the confirmation prompt.`,
 		}
 
 		if daemonRunning {
-			if err := daemon.Shutdown(sockpath, pidpath, os.Stdout, os.Stderr); err != nil {
+			if err := client.Shutdown(sockpath, pidpath, os.Stdout, os.Stderr); err != nil {
 				_ = os.Remove(newPath)
 				return fmt.Errorf("stop daemon: %w", err)
 			}
@@ -123,7 +123,7 @@ Use -y/--yes to skip the confirmation prompt.`,
 
 		if daemonRunning {
 			fmt.Println("restarting daemon...")
-			pid, err := daemon.Spawn(selfPath, sockpath, pidpath, logpath)
+			pid, err := client.Spawn(selfPath, sockpath, pidpath, logpath)
 			if err != nil {
 				return fmt.Errorf("restart daemon: %w", err)
 			}

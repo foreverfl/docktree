@@ -1,4 +1,4 @@
-package daemon
+package server
 
 import (
 	"os"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/foreverfl/gitt/internal/daemon"
 	"github.com/foreverfl/gitt/internal/store"
 )
 
@@ -59,8 +60,8 @@ func TestHandleRenameWorktree_RenamesFolderBranchAndRow(t *testing.T) {
 	repoRoot := setupBareLayout(t)
 	runGit(t, repoRoot, "worktree", "add", "-q", "-b", "feat/foo", ".worktrees/feat-foo")
 
-	server := newTestServer(t)
-	if _, err := server.store.InsertWorktree(
+	srv := newTestServer(t)
+	if _, err := srv.store.InsertWorktree(
 		repoRoot, filepath.Base(repoRoot),
 		"feat/foo", "feat-foo",
 		filepath.Join(repoRoot, ".worktrees/feat-foo"),
@@ -68,8 +69,8 @@ func TestHandleRenameWorktree_RenamesFolderBranchAndRow(t *testing.T) {
 		t.Fatalf("InsertWorktree: %v", err)
 	}
 
-	resp := server.handleRenameWorktree(Request{
-		Op: OpRenameWorktree,
+	resp := srv.handleRenameWorktree(daemon.Request{
+		Op: daemon.OpRenameWorktree,
 		Args: map[string]any{
 			"repo_root":  repoRoot,
 			"old_branch": "feat/foo",
@@ -98,7 +99,7 @@ func TestHandleRenameWorktree_RenamesFolderBranchAndRow(t *testing.T) {
 		t.Errorf("branch feat/bar not found, git output: %q", out)
 	}
 
-	row, err := server.store.GetWorktree(repoRoot, "feat/bar")
+	row, err := srv.store.GetWorktree(repoRoot, "feat/bar")
 	if err != nil {
 		t.Fatalf("GetWorktree(feat/bar): %v", err)
 	}
@@ -115,16 +116,16 @@ func TestHandleRenameWorktree_RejectsTargetExists(t *testing.T) {
 	runGit(t, repoRoot, "worktree", "add", "-q", "-b", "a", ".worktrees/a")
 	runGit(t, repoRoot, "worktree", "add", "-q", "-b", "b", ".worktrees/b")
 
-	server := newTestServer(t)
-	if _, err := server.store.InsertWorktree(
+	srv := newTestServer(t)
+	if _, err := srv.store.InsertWorktree(
 		repoRoot, filepath.Base(repoRoot),
 		"a", "a", filepath.Join(repoRoot, ".worktrees/a"),
 	); err != nil {
 		t.Fatalf("InsertWorktree a: %v", err)
 	}
 
-	resp := server.handleRenameWorktree(Request{
-		Op: OpRenameWorktree,
+	resp := srv.handleRenameWorktree(daemon.Request{
+		Op: daemon.OpRenameWorktree,
 		Args: map[string]any{
 			"repo_root":  repoRoot,
 			"old_branch": "a",
@@ -141,8 +142,8 @@ func TestHandleRenameWorktree_RejectsTargetExists(t *testing.T) {
 
 func TestHandleRelease_DeletesRow(t *testing.T) {
 	repoRoot := setupBareLayout(t)
-	server := newTestServer(t)
-	if _, err := server.store.InsertWorktree(
+	srv := newTestServer(t)
+	if _, err := srv.store.InsertWorktree(
 		repoRoot, filepath.Base(repoRoot),
 		"feat/foo", "feat-foo",
 		filepath.Join(repoRoot, ".worktrees/feat-foo"),
@@ -150,8 +151,8 @@ func TestHandleRelease_DeletesRow(t *testing.T) {
 		t.Fatalf("InsertWorktree: %v", err)
 	}
 
-	resp := server.handleRelease(Request{
-		Op: OpRelease,
+	resp := srv.handleRelease(daemon.Request{
+		Op: daemon.OpRelease,
 		Args: map[string]any{
 			"repo_root":   repoRoot,
 			"branch_name": "feat/foo",
@@ -161,7 +162,7 @@ func TestHandleRelease_DeletesRow(t *testing.T) {
 		t.Fatalf("release failed: %s", resp.Error)
 	}
 
-	rows, err := server.store.ListWorktrees()
+	rows, err := srv.store.ListWorktrees()
 	if err != nil {
 		t.Fatalf("ListWorktrees: %v", err)
 	}
@@ -174,10 +175,10 @@ func TestHandleRelease_DeletesRow(t *testing.T) {
 
 func TestHandleRelease_RejectsMissing(t *testing.T) {
 	repoRoot := setupBareLayout(t)
-	server := newTestServer(t)
+	srv := newTestServer(t)
 
-	resp := server.handleRelease(Request{
-		Op: OpRelease,
+	resp := srv.handleRelease(daemon.Request{
+		Op: daemon.OpRelease,
 		Args: map[string]any{
 			"repo_root":   repoRoot,
 			"branch_name": "ghost",
@@ -190,10 +191,10 @@ func TestHandleRelease_RejectsMissing(t *testing.T) {
 
 func TestHandleRenameWorktree_RejectsUnregistered(t *testing.T) {
 	repoRoot := setupBareLayout(t)
-	server := newTestServer(t)
+	srv := newTestServer(t)
 
-	resp := server.handleRenameWorktree(Request{
-		Op: OpRenameWorktree,
+	resp := srv.handleRenameWorktree(daemon.Request{
+		Op: daemon.OpRenameWorktree,
 		Args: map[string]any{
 			"repo_root":  repoRoot,
 			"old_branch": "nope",
