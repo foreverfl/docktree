@@ -23,6 +23,7 @@ without thinking about worktrees, branches, or compose configuration.
 | `gitt remove <branch>` | Remove the worktree folder for the given branch (`git worktree remove`). **Requires daemon** |
 | `gitt rename <old> <new>` | Rename a branch and its worktree folder together. Updates `<repo>/.worktrees/<old>` → `<repo>/.worktrees/<new>`, renames the branch, and updates the daemon record in one step. **Requires daemon** |
 | `gitt status` | Print the current worktree's repository, branch, path, and state (clean/dirty/rebase/merge/conflict, etc.) |
+| `gitt vscode` | Write (or update) `<repo-root>/<repo-name>.code-workspace` with one folder entry per registered worktree, labeled by branch name. Preserves existing `settings`/`extensions`. Useful because every worktree lives under `.worktrees/` and otherwise shows an identical title in VSCode. **Requires daemon** |
 | `gitt sqlite` | Run a SQLite self-test against the daemon's database to confirm the DB connection is healthy. **Requires daemon** |
 | `gitt update` | Fetch the latest release and install it. Shuts down the daemon, force-deletes all registered worktree folders (uncommitted and untracked changes are unrecoverable), runs `git worktree prune` on each repo, then removes `~/.gitt/` and replaces the binary. Use `-y`/`--yes` to skip the prompt |
 | `gitt version` | Print the installed gitt version |
