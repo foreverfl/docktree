@@ -1,0 +1,124 @@
+package store
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+)
+
+// migrator copies data from a database opened at schema v(N) to one opened
+// at schema v(N+1). The destination already has the v(N+1) schema applied,
+// so a migrator only needs to read from oldDB and write the equivalent rows
+// (renamed columns, split tables, derived defaults, etc.) into newDB.
+type migrator func(oldDB, newDB *sql.DB) error
+
+// migrations is the registry of step migrators keyed by source schema
+// version. v1 is the baseline shipped today, so the map is empty: there is
+// no migrations[0] (v0 → v1 is handled in Open as a stamp-only path) and no
+// later steps yet. When schema.sql changes, bump currentSchemaVersion and
+// register migrations[currentSchemaVersion-1] = ... here.
+var migrations = map[int]migrator{}
+
+// MigrateOnDisk migrates the SQLite file at dbpath from fromVersion to
+// toVersion using a safe backup/swap flow that never overwrites the original
+// file in place:
+//
+//  1. Rename <dbpath> → <dbpath>.old. The original is parked at .old; <dbpath>
+//     no longer exists, so any crash from this point on leaves an obvious
+//     recovery file rather than a half-written primary.
+//  2. Create <dbpath>.new and apply the v(toVersion) schema + user_version
+//     stamp.
+//  3. Open <dbpath>.old read/write and run each registered migrator from
+//     fromVersion up to toVersion-1, copying rows into <dbpath>.new.
+//  4. On success, rename <dbpath>.new → <dbpath> (the new primary), then
+//     remove <dbpath>.old plus its WAL/SHM sidecars.
+//  5. On any failure, remove <dbpath>.new and restore <dbpath>.old → <dbpath>
+//     so the next daemon start sees the original database untouched.
+//
+// The caller must guarantee no other process holds the database open;
+// MigrateOnDisk is invoked from Open after the live handle is closed.
+func MigrateOnDisk(dbpath string, fromVersion, toVersion int) error {
+	if fromVersion >= toVersion {
+		return fmt.Errorf("nothing to migrate: from v%d to v%d", fromVersion, toVersion)
+	}
+	oldpath := dbpath + ".old"
+	newpath := dbpath + ".new"
+
+	// Drop any stale scratch files from a previous failed attempt so they
+	// don't interfere with this run.
+	_ = os.Remove(oldpath)
+	_ = os.Remove(oldpath + "-wal")
+	_ = os.Remove(oldpath + "-shm")
+	_ = os.Remove(newpath)
+	_ = os.Remove(newpath + "-wal")
+	_ = os.Remove(newpath + "-shm")
+
+	if err := os.Rename(dbpath, oldpath); err != nil {
+		return fmt.Errorf("backup db (%s → %s): %w", dbpath, oldpath, err)
+	}
+
+	// abort wraps cause with restore-on-failure semantics: the caller's error
+	// is preserved, and we additionally try to put the original file back so
+	// the daemon can keep running with pre-migration data.
+	abort := func(cause error) error {
+		_ = os.Remove(newpath)
+		_ = os.Remove(newpath + "-wal")
+		_ = os.Remove(newpath + "-shm")
+		if restoreErr := os.Rename(oldpath, dbpath); restoreErr != nil {
+			return fmt.Errorf("%w (and restoring backup failed: %v)", cause, restoreErr)
+		}
+		return cause
+	}
+
+	newDB, err := openWithPragmas(newpath)
+	if err != nil {
+		return abort(fmt.Errorf("open new db: %w", err))
+	}
+	if err := applySchema(newDB, toVersion); err != nil {
+		_ = newDB.Close()
+		return abort(err)
+	}
+
+	oldDB, err := openWithPragmas(oldpath)
+	if err != nil {
+		_ = newDB.Close()
+		return abort(fmt.Errorf("open backup db: %w", err))
+	}
+
+	for v := fromVersion; v < toVersion; v++ {
+		step, ok := migrations[v]
+		if !ok {
+			_ = oldDB.Close()
+			_ = newDB.Close()
+			return abort(fmt.Errorf("no migrator registered for v%d → v%d", v, v+1))
+		}
+		if err := step(oldDB, newDB); err != nil {
+			_ = oldDB.Close()
+			_ = newDB.Close()
+			return abort(fmt.Errorf("migrate v%d → v%d: %w", v, v+1, err))
+		}
+	}
+
+	if err := oldDB.Close(); err != nil {
+		_ = newDB.Close()
+		return abort(fmt.Errorf("close backup db: %w", err))
+	}
+	if err := newDB.Close(); err != nil {
+		return abort(fmt.Errorf("close new db: %w", err))
+	}
+
+	if err := os.Rename(newpath, dbpath); err != nil {
+		return abort(fmt.Errorf("install new db (%s → %s): %w", newpath, dbpath, err))
+	}
+
+	// At this point the migration succeeded; the new primary is in place.
+	// Drop the backup and any leftover SQLite sidecars from either path.
+	// Failures here are not fatal — leftover files won't corrupt the new db,
+	// they'd just clutter the runtime dir.
+	_ = os.Remove(oldpath)
+	_ = os.Remove(oldpath + "-wal")
+	_ = os.Remove(oldpath + "-shm")
+	_ = os.Remove(newpath + "-wal")
+	_ = os.Remove(newpath + "-shm")
+	return nil
+}
