@@ -241,6 +241,10 @@ func TestMigrateOnDisk_FailureRestoresOriginal(t *testing.T) {
 }
 
 func TestMigrateOnDisk_MissingMigratorFails(t *testing.T) {
+	// Pick a version pair the binary genuinely has no migrator for. As the
+	// schema grows we keep moving this past the highest registered step so the
+	// test always exercises the "missing migrator" branch instead of accidentally
+	// running a real migrator we shipped.
 	dir := t.TempDir()
 	dbpath := filepath.Join(dir, "data.db")
 	store, err := Open(dbpath)
@@ -251,7 +255,7 @@ func TestMigrateOnDisk_MissingMigratorFails(t *testing.T) {
 		t.Fatalf("Close: %v", err)
 	}
 
-	if err := MigrateOnDisk(dbpath, 1, 2); err == nil {
+	if err := MigrateOnDisk(dbpath, currentSchemaVersion, currentSchemaVersion+1); err == nil {
 		t.Fatal("expected error when no migrator is registered, got nil")
 	}
 	if _, err := os.Stat(dbpath); err != nil {

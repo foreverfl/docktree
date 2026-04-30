@@ -13,11 +13,49 @@ import (
 type migrator func(oldDB, newDB *sql.DB) error
 
 // migrations is the registry of step migrators keyed by source schema
-// version. v1 is the baseline shipped today, so the map is empty: there is
-// no migrations[0] (v0 → v1 is handled in Open as a stamp-only path) and no
-// later steps yet. When schema.sql changes, bump currentSchemaVersion and
-// register migrations[currentSchemaVersion-1] = ... here.
-var migrations = map[int]migrator{}
+// version. v0 → v1 is handled in Open as a stamp-only path, so it has no
+// entry. When schema.sql changes, bump currentSchemaVersion and register
+// migrations[currentSchemaVersion-1] = ... here.
+var migrations = map[int]migrator{
+	1: migrateV1ToV2,
+}
+
+// migrateV1ToV2 carries the v1 worktrees rows forward unchanged. v2 adds
+// the new `repos` table and re-shapes `ports`: same per-worktree intent as
+// v1 (still keyed by worktree_id) but with extra columns (id, name,
+// container_port, protocol, timestamps) that v1 has no source for. Rather
+// than fabricate defaults for required columns, v1 ports rows are dropped
+// — that table was never populated by any CRUD or daemon path, so the drop
+// is a no-op for real installs. New tables start empty and the daemon or
+// future commands populate them.
+func migrateV1ToV2(oldDB, newDB *sql.DB) error {
+	worktreeRows, err := oldDB.Query(`
+		SELECT id, repo_root, repo_name, branch_name, safe_branch_name,
+		       worktree_path, status, created_at, updated_at
+		  FROM worktrees`)
+	if err != nil {
+		return fmt.Errorf("read worktrees: %w", err)
+	}
+	defer worktreeRows.Close()
+	for worktreeRows.Next() {
+		var (
+			id                                                           int64
+			repoRoot, repoName, branchName, safeBranchName, worktreePath string
+			status, createdAt, updatedAt                                 string
+		)
+		if err := worktreeRows.Scan(&id, &repoRoot, &repoName, &branchName, &safeBranchName, &worktreePath, &status, &createdAt, &updatedAt); err != nil {
+			return fmt.Errorf("scan worktree: %w", err)
+		}
+		if _, err := newDB.Exec(
+			`INSERT INTO worktrees (id, repo_root, repo_name, branch_name, safe_branch_name, worktree_path, status, created_at, updated_at)
+			 VALUES (?,?,?,?,?,?,?,?,?)`,
+			id, repoRoot, repoName, branchName, safeBranchName, worktreePath, status, createdAt, updatedAt,
+		); err != nil {
+			return fmt.Errorf("insert worktree id=%d: %w", id, err)
+		}
+	}
+	return worktreeRows.Err()
+}
 
 // MigrateOnDisk migrates the SQLite file at dbpath from fromVersion to
 // toVersion using a safe backup/swap flow that never overwrites the original
