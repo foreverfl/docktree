@@ -8,6 +8,7 @@ import (
 
 	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/gitx"
+	"github.com/foreverfl/gitt/internal/vscode"
 	"github.com/spf13/cobra"
 )
 
@@ -49,6 +50,8 @@ var addCmd = &cobra.Command{
 			if err := client.RegisterWorktree(mainRoot, branch, existingPath); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: daemon registration failed: %v\n", err)
 			}
+			
+			vscode.Sync(mainRoot, info)
 			if addPrintPath {
 				fmt.Fprintln(cmd.OutOrStdout(), existingPath)
 			}
@@ -77,6 +80,7 @@ var addCmd = &cobra.Command{
 		} else {
 			fmt.Fprintf(info, "created worktree (new branch)\n  path:   %s\n  branch: %s\n", target, branch)
 		}
+		vscode.Sync(mainRoot, info)
 		fmt.Fprintf(info, "\nOpen a new terminal, then run:\n  cd %s\n  # start your AI CLI here\n", target)
 
 		if addPrintPath {

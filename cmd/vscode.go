@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/foreverfl/gitt/internal/gitx"
 	"github.com/foreverfl/gitt/internal/vscode"
@@ -30,9 +29,7 @@ var vscodeCmd = &cobra.Command{
 			return fmt.Errorf("no worktrees registered for %s", mainRoot)
 		}
 
-		repoName := filepath.Base(mainRoot)
-		workspacePath := filepath.Join(mainRoot, repoName+".code-workspace")
-
+		workspacePath := vscode.WorkspacePath(mainRoot)
 		if err := vscode.WriteWorkspace(workspacePath, folders); err != nil {
 			return err
 		}
