@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "docusaurus": "docusaurus",
-    "start": "docusaurus start",
-    "start:ko": "docusaurus start --locale ko",
-    "start:ja": "docusaurus start --locale ja",
+    "start": "docusaurus start --port 13000",
+    "start:ko": "docusaurus start --locale ko --port 13000",
+    "start:ja": "docusaurus start --locale ja --port 13000",
     "build": "docusaurus build",
     "build:ko": "docusaurus build --locale ko",
     "build:ja": "docusaurus build --locale ja",
