@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/BurntSushi/toml"
 
@@ -25,6 +26,7 @@ var defaultTOML []byte
 type Config struct {
 	UI       UISection       `toml:"ui"`
 	Worktree WorktreeSection `toml:"worktree"`
+	Branches BranchesSection `toml:"branches"`
 }
 
 type UISection struct {
@@ -35,6 +37,21 @@ type WorktreeSection struct {
 	Copy    []string `toml:"copy"`
 	Symlink []string `toml:"symlink"`
 	Ignore  []string `toml:"ignore"`
+}
+
+// BranchesSection holds branch-level policy. Protected lists branch names
+// that gitt refuses to rename or remove — typically the long-lived trunk
+// branches (main, master, staging) the user does not want to touch via
+// `gitt`. Matching is case-sensitive and exact: git itself treats
+// `Main` and `main` as different refs, so gitt mirrors that.
+type BranchesSection struct {
+	Protected []string `toml:"protected"`
+}
+
+// IsProtected reports whether branchName appears in the protected list.
+// Exact, case-sensitive comparison — see the BranchesSection comment.
+func (cfg *Config) IsProtected(branchName string) bool {
+	return slices.Contains(cfg.Branches.Protected, branchName)
 }
 
 // Load returns the resolved config. If ~/.gitt/config.toml exists it is

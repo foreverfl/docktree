@@ -18,3 +18,10 @@ symlink = ["node_modules", ".venv"]
 
 # Paths skipped when seeding a new worktree (build outputs, caches).
 ignore = ["dist", "build", ".next", ".cache", "target"]
+
+[branches]
+# Branches gitt refuses to rename or remove. Match is case-sensitive and
+# exact — `main` does not protect `Main`. Add or remove entries to fit
+# your repo's trunk naming (e.g. `develop`, `release/*` is NOT supported;
+# list each name explicitly).
+protected = ["main", "master", "staging"]
