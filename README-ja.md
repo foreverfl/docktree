@@ -49,12 +49,16 @@ logo_enabled = false
 copy    = [".env", ".env.local", ".env.development", ".envrc", ".npmrc", ".nvmrc"]
 symlink = ["node_modules", ".venv"]
 ignore  = ["dist", "build", ".next", ".cache", "target"]
+
+[branches]
+protected = ["main", "master", "staging"]
 ```
 
 - `logo_enabled` — `gitt on` 起動時にボックス型ロゴバナーを表示するかどうかを制御する。ファイルを直接編集するより `gitt logo` でトグルする方が簡単。
 - `copy` — 新しい worktree にコピーされるファイル（env・シークレット等、共有しないもの）。
 - `symlink` — 新しい worktree にシンボリックリンクされるパス（重複を避けたい重いディレクトリ）。
 - `ignore` — 新しい worktree のシード時にスキップするパス（ビルド成果物、キャッシュ等）。
+- `protected` — ここに列挙したブランチ名は `gitt rename` および `gitt remove` で拒否される予定。大文字・小文字を区別した完全一致（`main` は `Main` を保護しない）。ワイルドカード・正規表現は非対応; 各名前を明示的に列挙すること。**注意: このバージョンでは config キーの定義のみ追加済み; コマンドへの強制適用はまだ接続されていない。**
 
 > **注意:** このリリースでは config インフラと編集コマンドのみを含む。`copy`、`symlink`、`ignore` の
 > リストはまだ `gitt add` や `gitt clone` では使われていない。スキーマが先行着地し、

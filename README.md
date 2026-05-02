@@ -50,12 +50,16 @@ logo_enabled = false
 copy    = [".env", ".env.local", ".env.development", ".envrc", ".npmrc", ".nvmrc"]
 symlink = ["node_modules", ".venv"]
 ignore  = ["dist", "build", ".next", ".cache", "target"]
+
+[branches]
+protected = ["main", "master", "staging"]
 ```
 
 - `logo_enabled` — controls whether `gitt on` prints the boxed logo banner. Easier to flip with `gitt logo` than editing the file directly.
 - `copy` — files copied into each new worktree (env/secret files that should not be shared).
 - `symlink` — paths symlinked into each new worktree (heavy directories you do not want duplicated).
 - `ignore` — paths skipped when seeding a new worktree (build outputs, caches).
+- `protected` — branch names listed here are intended to be refused by `gitt rename` and `gitt remove`. Match is case-sensitive and exact (`main` does not protect `Main`). Wildcards and regex are not supported; list each name explicitly. **Note: the config key is defined as of this version; enforcement in commands is not yet wired up.**
 
 > **Note:** The config infrastructure and the edit command ship in this release. The
 > `copy`, `symlink`, and `ignore` lists are not yet consumed by `gitt add` or `gitt clone`.
