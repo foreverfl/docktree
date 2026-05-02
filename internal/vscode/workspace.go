@@ -55,20 +55,32 @@ func Folders(mainRoot string) ([]Folder, error) {
 
 // WriteWorkspace replaces only the "folders" key of an existing workspace
 // file, preserving any user-edited "settings", "extensions", etc. When the
-// file does not yet exist, it writes a minimal skeleton.
+// file does not yet exist, it writes a skeleton that pre-disables the
+// "terminal will be relaunched" prompt that VSCode raises whenever an
+// extension contributing terminal env vars sees the workspace structure
+// change — gitt rewrites the folder list on every add/remove, so without
+// these defaults users get nagged on every command. The defaults are seeded
+// once on creation; subsequent calls leave settings alone so the user can
+// override or delete them freely.
 func WriteWorkspace(workspacePath string, folders []Folder) error {
 	doc := map[string]any{}
+	fileExisted := true
 	if existing, err := os.ReadFile(workspacePath); err == nil {
 		if err := json.Unmarshal(existing, &doc); err != nil {
 			return fmt.Errorf("parse existing %s: %w", filepath.Base(workspacePath), err)
 		}
-	} else if !errors.Is(err, os.ErrNotExist) {
+	} else if errors.Is(err, os.ErrNotExist) {
+		fileExisted = false
+	} else {
 		return fmt.Errorf("read %s: %w", filepath.Base(workspacePath), err)
 	}
 
 	doc["folders"] = folders
-	if _, ok := doc["settings"]; !ok {
-		doc["settings"] = map[string]any{}
+	if !fileExisted {
+		doc["settings"] = map[string]any{
+			"terminal.integrated.environmentChangesIndicator": "off",
+			"terminal.integrated.environmentChangesRelaunch":  false,
+		}
 	}
 
 	buf, err := json.MarshalIndent(doc, "", "  ")
