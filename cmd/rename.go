@@ -7,6 +7,7 @@ import (
 
 	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/gitx"
+	"github.com/foreverfl/gitt/internal/vscode"
 	"github.com/spf13/cobra"
 )
 
@@ -38,6 +39,7 @@ var renameCmd = &cobra.Command{
 
 		newPath := gitx.WorktreePath(mainRoot, newBranch)
 		fmt.Printf("renamed\n  branch: %s -> %s\n  path:   %s\n", oldBranch, newBranch, newPath)
+		vscode.Sync(mainRoot, os.Stdout)
 
 		cwd, _ := os.Getwd()
 		oldPath := gitx.WorktreePath(mainRoot, oldBranch)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/gitx"
+	"github.com/foreverfl/gitt/internal/vscode"
 	"github.com/spf13/cobra"
 )
 
@@ -42,6 +43,7 @@ var removeCmd = &cobra.Command{
 		}
 
 		fmt.Printf("removed worktree\n  path:   %s\n  branch: %s\n", target, branch)
+		vscode.Sync(mainRoot, os.Stdout)
 		return nil
 	},
 }
