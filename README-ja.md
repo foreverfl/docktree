@@ -19,6 +19,7 @@ Git, GitHub, Docker に詳しくなくても、ブランチごとに隔離され
 | --- | --- |
 | `gitt on` | デーモン起動 (`~/.gitt/gitt.sock`, `~/.gitt/gitt.db`)。`~/.gitt/config.toml` に `[ui] logo_enabled = true` が設定されている場合のみ、起動時にボックス型ロゴバナーを表示（デフォルト: 非表示）。`gitt logo` でトグル可能。 |
 | `gitt off` | デーモン停止 |
+| `gitt init [dir]` | `dir`（デフォルト: カレントディレクトリ）に bare レイアウトのリポジトリを初期化。`<dir>/.bare`（bare repo）を作成し、`<dir>/.git` ポインターファイルを書き込み、`<dir>/.worktrees/<branch>` に空の orphan worktree を追加する。`-b`/`--initial-branch <name>` で初期ブランチを指定可能（デフォルト: `init.defaultBranch` の設定値、次いで `main`）。git 2.42+ が必要。`.bare` または `.git` がすでに存在する場合は拒否。終了時にデーモン登録を試みる（デーモンが停止中の場合は警告）。`gitt clone` のリモートなし版。 |
 | `gitt add <branch>` | `<repo>/.worktrees/<branch>` に worktree を作成。ブランチが存在すればチェックアウト、なければ新規作成。ブランチ名の `/`・`\` は `-` に変換される。対象ブランチがすでにどこかにチェックアウト済み（例: リポジトリルートの `main`）の場合は、新規作成せず既存パスを通知してデーモンに登録する。`--print-path` を付けると人向けの出力を stderr に送り、stdout には worktree の絶対パスのみを 1 行出力する（シェルラッパー向け）。**デーモン必須** |
 | `gitt remove <branch>` | 指定ブランチの worktree フォルダを削除 (`git worktree remove`)。**デーモン必須** |
 | `gitt rename <old> <new>` | ブランチと worktree フォルダを同時にリネーム。`<repo>/.worktrees/<old>` → `<repo>/.worktrees/<new>` への移動、ブランチ名の変更、デーモンレコードの更新を一括で実行。**デーモン必須** |
