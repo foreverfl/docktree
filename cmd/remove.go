@@ -6,6 +6,7 @@ import (
 
 	"github.com/foreverfl/gitt/internal/daemon/client"
 	"github.com/foreverfl/gitt/internal/gitx"
+	"github.com/foreverfl/gitt/internal/ui"
 	"github.com/foreverfl/gitt/internal/vscode"
 	"github.com/spf13/cobra"
 )
@@ -31,6 +32,14 @@ var removeCmd = &cobra.Command{
 				return fmt.Errorf("no worktree at %s", target)
 			}
 			return fmt.Errorf("stat worktree: %w", err)
+		}
+
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		if dryRun {
+			ui.DryRunf(os.Stdout, "would remove worktree\n  path:   %s\n  branch: %s\n", target, branch)
+			ui.DryRunf(os.Stdout, "would release daemon record for branch %s\n", branch)
+			ui.DryRunf(os.Stdout, "would resync vscode workspace at %s\n", mainRoot)
+			return nil
 		}
 
 		if err := gitx.WorktreeRemove(target); err != nil {

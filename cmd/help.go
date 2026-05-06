@@ -62,7 +62,8 @@ func printHelp(out io.Writer) {
 
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Flags:")
-	fmt.Fprintln(out, "  -y, --yes   Skip confirmation prompts")
+	fmt.Fprintln(out, "  -y, --yes       Skip confirmation prompts")
+	fmt.Fprintln(out, "      --dry-run   Preview actions without making changes")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Run `gitt <command> --help` for command-specific details.")
 }

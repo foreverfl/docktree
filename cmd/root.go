@@ -18,6 +18,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().BoolP("yes", "y", false, "skip confirmation prompts")
+	rootCmd.PersistentFlags().Bool("dry-run", false, "preview actions without making changes")
 }
 
 func Execute() error {
