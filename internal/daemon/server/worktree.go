@@ -68,6 +68,25 @@ func (s *server) handleRenameWorktree(req daemon.Request) daemon.Response {
 		return daemon.Response{OK: false, Error: "old_branch and new_branch are the same"}
 	}
 
+	// Protected-branch guards. cfg is consulted (not the cached
+	// is_protected column) because TOML is the source of truth and may
+	// have changed since the last startup reconcile; the column is for
+	// display. Two checks: refuse when the source branch is protected,
+	// and refuse when the new name is a protected branch — the latter
+	// closes the `rename feat/foo main` bypass where an unprotected
+	// worktree could be renamed onto a protected name and inherit no
+	// guard at the rename site.
+	cfg, err := config.Load()
+	if err != nil {
+		return daemon.Response{OK: false, Error: fmt.Sprintf("load config: %s", err)}
+	}
+	if cfg.IsProtected(args.OldBranch) {
+		return daemon.Response{OK: false, Error: fmt.Sprintf("branch %q is protected by config; rename refused", args.OldBranch)}
+	}
+	if cfg.IsProtected(args.NewBranch) {
+		return daemon.Response{OK: false, Error: fmt.Sprintf("new name %q is a protected branch; rename refused to prevent policy bypass", args.NewBranch)}
+	}
+
 	existing, err := s.repo.GetWorktree(args.RepoRoot, args.OldBranch)
 	if err != nil {
 		return daemon.Response{OK: false, Error: fmt.Sprintf("not registered with gitt: %s", err)}
