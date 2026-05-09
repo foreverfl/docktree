@@ -22,8 +22,8 @@ Git, GitHub, Docker に詳しくなくても、ブランチごとに隔離され
 | `gitt init [dir]` | `dir`（デフォルト: カレントディレクトリ）に bare レイアウトのリポジトリを初期化。`<dir>/.bare`（bare repo）を作成し、`<dir>/.git` ポインターファイルを書き込み、`<dir>/.worktrees/<branch>` に空の orphan worktree を追加する。`-b`/`--initial-branch <name>` で初期ブランチを指定可能（デフォルト: `init.defaultBranch` の設定値、次いで `main`）。git 2.42+ が必要。`.bare` または `.git` がすでに存在する場合は拒否。終了時にデーモン登録を試みる（デーモンが停止中の場合は警告）。`gitt clone` のリモートなし版。 |
 | `gitt add <branch>` | `<repo>/.worktrees/<branch>` に worktree を作成。ブランチが存在すればチェックアウト、なければ新規作成。ブランチ名の `/`・`\` は `-` に変換される。対象ブランチがすでにどこかにチェックアウト済み（例: リポジトリルートの `main`）の場合は、新規作成せず既存パスを通知してデーモンに登録する。`--print-path` を付けると人向けの出力を stderr に送り、stdout には worktree の絶対パスのみを 1 行出力する（シェルラッパー向け）。**デーモン必須** |
 | `gitt remove <branch>` | 指定ブランチの worktree フォルダを削除 (`git worktree remove`)。**デーモン必須** |
-| `gitt rename <old> <new>` | ブランチと worktree フォルダを同時にリネーム。`<repo>/.worktrees/<old>` → `<repo>/.worktrees/<new>` への移動、ブランチ名の変更、デーモンレコードの更新を一括で実行。**デーモン必須** |
-| `gitt list` | 現在の作業ディレクトリが属するリポジトリの worktree を一覧表示。`--global` / `-g` を付けるとデーモンが知っている全リポジトリの worktree を一覧表示し、区別用に `REPO` 列が追加される。cwd が git リポジトリ内でない場合はエラーで停止し `--global` の使用を案内する。**デーモン必須** |
+| `gitt rename <old> <new>` | ブランチと worktree フォルダを同時にリネーム。`<repo>/.worktrees/<old>` → `<repo>/.worktrees/<new>` への移動、ブランチ名の変更、デーモンレコードの更新を一括で実行。`<old>` または `<new>` が `[branches].protected` に含まれる場合は拒否（`<new>` のチェックは `gitt rename feat/foo main` のようなポリシー回避を防ぐ）。**デーモン必須** |
+| `gitt list` | 現在の作業ディレクトリが属するリポジトリの worktree を一覧表示。出力列: `BRANCH  PROTECTED  STATUS  PATH`。`PROTECTED` は `[branches].protected` に含まれるブランチなら `*`、それ以外は空欄。`--global` / `-g` を付けるとデーモンが知っている全リポジトリの worktree を一覧表示し、先頭に `REPO` 列が追加される。cwd が git リポジトリ内でない場合はエラーで停止し `--global` の使用を案内する。**デーモン必須** |
 | `gitt status` | 現在の worktree のリポジトリ、ブランチ、パス、状態 (clean/dirty/rebase/merge/conflict など) を出力 |
 | `gitt vscode` | `<repo-root>/<repo-name>.code-workspace` を作成（または更新）。登録済み worktree ごとにブランチ名でラベル付けされたフォルダーエントリを追加。既存の `settings`/`extensions` は保持される。新規作成時のみ `terminal.integrated.environmentChangesIndicator: "off"` と `terminal.integrated.environmentChangesRelaunch: false` を `settings` に一度だけ投入する（フォルダー一覧が変わるたびにターミナル env に貢献する拡張機能が出すターミナル再起動プロンプトを抑制するため）。以降は gitt が `settings` に一切触れないため、ユーザが値を変更したりキーを削除してもそのまま維持される。すべての worktree が `.worktrees/` 配下にあり VSCode のタイトルで区別しにくい場合に便利。bare レイアウト内のどこからでも実行可能（メインルートまたは任意の worktree） — 出力ファイルは常にメインリポジトリのルートに生成される。その後 `code <repo-root>/<repo-name>.code-workspace` で開く（例: `code gitt/gitt.code-workspace`）。`.worktrees/` を直接開くのはこのコマンドが解決しようとしている状況そのものなので避けること。**デーモン必須** |
 | `gitt sqlite` | デーモンの DB 接続が正常かを確認する SQLite セルフテストを実行。**デーモン必須** |
@@ -59,11 +59,11 @@ protected = ["main", "master", "staging"]
 - `copy` — 新しい worktree にコピーされるファイル（env・シークレット等、共有しないもの）。
 - `symlink` — 新しい worktree にシンボリックリンクされるパス（重複を避けたい重いディレクトリ）。
 - `ignore` — 新しい worktree のシード時にスキップするパス（ビルド成果物、キャッシュ等）。
-- `protected` — ここに列挙したブランチ名は `gitt rename` および `gitt remove` で拒否される予定。大文字・小文字を区別した完全一致（`main` は `Main` を保護しない）。ワイルドカード・正規表現は非対応; 各名前を明示的に列挙すること。**注意: このバージョンでは config キーの定義のみ追加済み; コマンドへの強制適用はまだ接続されていない。**
+- `protected` — ここに列挙したブランチ名は `gitt rename`（移動元・移動先とも）で拒否される。大文字・小文字を区別した完全一致（`main` は `Main` を保護しない）。ワイルドカード・正規表現は非対応; 各名前を明示的に列挙すること。デーモンは起動時にこのリストを読み込むため、ファイルを編集した後は `gitt off && gitt on` を実行して変更を反映させること。
 
-> **注意:** このリリースでは config インフラと編集コマンドのみを含む。`copy`、`symlink`、`ignore` の
-> リストはまだ `gitt add` や `gitt clone` では使われていない。スキーマが先行着地し、
-> コマンドへの組み込みは次のステップで行われる予定。
+> **注意:** `copy`、`symlink`、`ignore` のリストはまだ `gitt add` や `gitt clone` では
+> 使われていない。`[branches].protected` のリストは現在 `gitt rename` で適用されている;
+> `gitt remove` での適用は予定されているが、まだ実装されていない。
 
 **エディタのヒント:** シェル rc に `export EDITOR="code --wait"` を追加すると VS Code が使える。
 `--wait` フラグは必須 — ファイルを閉じるまでエディタがブロックする必要がある。
