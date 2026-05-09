@@ -53,16 +53,16 @@ var listCmd = &cobra.Command{
 
 		writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 		if listGlobal {
-			fmt.Fprintln(writer, "REPO\tBRANCH\tSTATUS\tPATH")
-			for _, w := range worktrees {
-				fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
-					w.RepoName, w.BranchName, w.Status, w.WorktreePath)
+			fmt.Fprintln(writer, "REPO\tBRANCH\tPROTECTED\tSTATUS\tPATH")
+			for _, worktree := range worktrees {
+				fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
+					worktree.RepoName, worktree.BranchName, protectedMark(worktree.IsProtected), worktree.Status, worktree.WorktreePath)
 			}
 		} else {
-			fmt.Fprintln(writer, "BRANCH\tSTATUS\tPATH")
-			for _, w := range worktrees {
-				fmt.Fprintf(writer, "%s\t%s\t%s\n",
-					w.BranchName, w.Status, w.WorktreePath)
+			fmt.Fprintln(writer, "BRANCH\tPROTECTED\tSTATUS\tPATH")
+			for _, worktree := range worktrees {
+				fmt.Fprintf(writer, "%s\t%s\t%s\t%s\n",
+					worktree.BranchName, protectedMark(worktree.IsProtected), worktree.Status, worktree.WorktreePath)
 			}
 		}
 		return writer.Flush()
@@ -72,4 +72,14 @@ var listCmd = &cobra.Command{
 func init() {
 	listCmd.Flags().BoolVarP(&listGlobal, "global", "g", false, "list worktrees across all repos")
 	rootCmd.AddCommand(listCmd)
+}
+
+// protectedMark renders the PROTECTED column cell. A single "*" keeps the
+// column slim so the existing BRANCH/STATUS/PATH layout barely shifts; the
+// blank case stays empty rather than "no" / "-" for the same reason.
+func protectedMark(isProtected bool) string {
+	if isProtected {
+		return "*"
+	}
+	return ""
 }
