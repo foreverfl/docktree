@@ -1,3 +1,10 @@
+// Package ui contains raw interactive prompt primitives used across gitt's
+// commands. Confirm is a small bufio-based yes/no prompt; Select wraps
+// charmbracelet/huh to give arrow-key navigation, a coloured selection
+// indicator, and a checkmark on the chosen entry. Both functions detect
+// non-terminals up front and return ErrNoTTY so callers can translate that
+// into a flag-driven hint (--yes, --project-type, …) rather than blocking on
+// a closed stdin.
 package ui
 
 import (
@@ -6,8 +13,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
+
+	"github.com/charmbracelet/huh"
+	"github.com/mattn/go-isatty"
 )
 
 // ErrNoTTY signals that stdin is not a terminal, so an interactive prompt
@@ -66,8 +75,13 @@ func confirm(in io.Reader, out io.Writer, message string, defaultYes bool) (bool
 }
 
 // Option is one entry in a Select prompt. Disabled options are still rendered
-// (so users can see what's coming) but cannot be picked — choosing one
-// re-prompts with the option's Note as the rejection message.
+// (so users can see what's coming) but cannot be picked — the underlying huh
+// form runs Validate on each submission and returns the option's Note as the
+// rejection message, leaving the cursor in place so the user can pick again.
+//
+// The same struct is intended to back a future MultiSelect helper: huh's
+// Option[T] type is what both NewSelect and NewMultiSelect consume, so adding
+// a list-returning variant is a matter of swapping the constructor.
 type Option struct {
 	Label    string
 	Value    string
@@ -75,14 +89,11 @@ type Option struct {
 	Note     string
 }
 
-// Select asks the user to pick one of the given options on stdin/stderr and
-// returns the chosen option's Value. The user may type either the option
-// number (1-based) or the option's label; an empty line picks defaultIndex.
+// Select asks the user to pick one of the given options using arrow keys and
+// Enter, and returns the chosen option's Value. defaultIndex positions the
+// cursor on initial render. Returns ErrNoTTY when stdin is not a terminal so
+// callers can advise on flag-based bypass (--yes, --project-type, …).
 func Select(message string, options []Option, defaultIndex int) (string, error) {
-	return selectFromOptions(os.Stdin, os.Stderr, message, options, defaultIndex)
-}
-
-func selectFromOptions(in io.Reader, out io.Writer, message string, options []Option, defaultIndex int) (string, error) {
 	if len(options) == 0 {
 		return "", fmt.Errorf("no options provided")
 	}
@@ -93,78 +104,60 @@ func selectFromOptions(in io.Reader, out io.Writer, message string, options []Op
 		return "", fmt.Errorf("default option %q is disabled", options[defaultIndex].Label)
 	}
 
-	if file, ok := in.(*os.File); ok {
-		stat, err := file.Stat()
-		if err != nil {
-			return "", err
-		}
-		if stat.Mode()&os.ModeCharDevice == 0 {
-			return "", ErrNoTTY
-		}
+	if !isTerminal(os.Stdin) {
+		return "", ErrNoTTY
 	}
 
-	reader := bufio.NewReader(in)
-	for range maxAttempts {
-		if _, err := fmt.Fprintln(out, message); err != nil {
-			return "", err
-		}
-		for index, option := range options {
-			marker := " "
-			if index == defaultIndex {
-				marker = "*"
-			}
-			suffix := ""
-			if option.Note != "" {
-				suffix = " — " + option.Note
-			}
-			if option.Disabled {
-				suffix += " (unavailable)"
-			}
-			if _, err := fmt.Fprintf(out, "  %s %d) %s%s\n", marker, index+1, option.Label, suffix); err != nil {
-				return "", err
-			}
-		}
-		if _, err := fmt.Fprintf(out, "choose [1-%d, default %d]: ", len(options), defaultIndex+1); err != nil {
-			return "", err
-		}
+	huhOptions, disabledByValue := buildHuhOptions(options)
+	chosen := options[defaultIndex].Value
 
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return "", ErrNoTTY
-			}
-			return "", err
-		}
-		answer := strings.TrimSpace(line)
-		if answer == "" {
-			return options[defaultIndex].Value, nil
-		}
-
-		picked := -1
-		if number, err := strconv.Atoi(answer); err == nil && number >= 1 && number <= len(options) {
-			picked = number - 1
-		} else {
-			lower := strings.ToLower(answer)
-			for index, option := range options {
-				if strings.ToLower(option.Label) == lower {
-					picked = index
-					break
+	err := huh.NewSelect[string]().
+		Title(message).
+		Options(huhOptions...).
+		Value(&chosen).
+		Validate(func(v string) error {
+			if opt, blocked := disabledByValue[v]; blocked {
+				note := opt.Note
+				if note == "" {
+					note = "not available yet"
 				}
+				return fmt.Errorf("%q is %s — pick another", opt.Label, note)
 			}
-		}
-		if picked < 0 {
-			fmt.Fprintf(out, "please enter a number from 1 to %d, or an option label\n", len(options))
-			continue
-		}
-		if options[picked].Disabled {
-			message := options[picked].Note
-			if message == "" {
-				message = "not available yet"
-			}
-			fmt.Fprintf(out, "%q is %s — pick another\n", options[picked].Label, message)
-			continue
-		}
-		return options[picked].Value, nil
+			return nil
+		}).
+		Run()
+	if err != nil {
+		return "", err
 	}
-	return "", fmt.Errorf("too many invalid responses")
+	return chosen, nil
+}
+
+// isTerminal reports whether the given file is connected to an interactive
+// terminal. Plain os.ModeCharDevice checks misclassify /dev/null on macOS
+// (it is itself a character device), so we defer to go-isatty which queries
+// the kernel via tcgetattr — only real ttys answer.
+func isTerminal(file *os.File) bool {
+	fd := file.Fd()
+	return isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
+}
+
+// buildHuhOptions converts gitt's Option slice into huh.Option[string] entries
+// and returns a lookup of values that should be rejected by Validate. Disabled
+// entries are decorated with an "(unavailable)" suffix and any Note text so
+// the preview is visible without being selectable.
+func buildHuhOptions(options []Option) ([]huh.Option[string], map[string]Option) {
+	huhOptions := make([]huh.Option[string], len(options))
+	disabledByValue := make(map[string]Option)
+	for index, option := range options {
+		label := option.Label
+		if option.Note != "" {
+			label += " — " + option.Note
+		}
+		if option.Disabled {
+			label += " (unavailable)"
+			disabledByValue[option.Value] = option
+		}
+		huhOptions[index] = huh.NewOption(label, option.Value)
+	}
+	return huhOptions, disabledByValue
 }
